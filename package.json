@@ -2,10 +2,10 @@
   "name": "n8v-node-bcknd",
   "version": "1.0.0",
   "description": "Operations Console — Node.js API backend for call logs",
-  "main": "src/index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
@@ -24,9 +24,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/archit-singhania/ng-saas-node-bcknd/issues"
-  },
-  "homepage": "https://github.com/archit-singhania/ng-saas-node-bcknd#readme"
+  "type": "commonjs"
 }

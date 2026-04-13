@@ -1,14 +1,11 @@
+'use strict';
 require('dotenv').config();
-const { Pool } = require('pg');
 
-const pool = new Pool({
+module.exports = {
   host:     process.env.DB_HOST     || 'localhost',
   port:     parseInt(process.env.DB_PORT || '5432', 10),
   database: process.env.DB_NAME     || 'demo_db',
   user:     process.env.DB_USER     || 'postgres',
   password: process.env.DB_PASSWORD || '',
-});
-
-pool.on('error', () => {});
-
-module.exports = pool;
+  schema:   process.env.DB_SCHEMA   || 'llm_ai_call_agent',
+};

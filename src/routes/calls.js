@@ -4,9 +4,6 @@ const pool    = require('../db/pool');
 
 const SCHEMA = process.env.DB_SCHEMA || 'llm_ai_call_agent';
 
-/**
- * Converts duration_sec (integer seconds) → "Xm Ys" string.
- */
 function fmtDuration(seconds) {
   if (!seconds || seconds <= 0) return '0m 0s';
   const m = Math.floor(seconds / 60);
@@ -14,10 +11,6 @@ function fmtDuration(seconds) {
   return `${m}m ${s}s`;
 }
 
-// ─────────────────────────────────────────────
-// GET /api/calls/summary
-// Returns: { totalCalls, avgDuration }
-// ─────────────────────────────────────────────
 router.get('/summary', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -41,10 +34,6 @@ router.get('/summary', async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────
-// GET /api/calls/recent
-// Returns: last 10 rows ordered by created_at DESC
-// ─────────────────────────────────────────────
 router.get('/recent', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -77,11 +66,6 @@ router.get('/recent', async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────
-// GET /api/calls
-// Query params: page (default 1), limit (default 15)
-// Returns: { data, total, page, limit }
-// ─────────────────────────────────────────────
 router.get('/', async (req, res) => {
   const page  = Math.max(1, parseInt(req.query.page  || '1',  10));
   const limit = Math.max(1, parseInt(req.query.limit || '15', 10));

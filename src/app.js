@@ -1,10 +1,10 @@
 'use strict';
 const express    = require('express');
 const cors       = require('cors');
-const appConfig  = require('../config/app');
-const callRoutes = require('../routes/calls.routes');
-const errorHandler = require('../middlewares/errorHandler');
-const notFound     = require('../middlewares/notFound');
+const appConfig    = require('./config/app');
+const callRoutes   = require('./routes/calls.routes');
+const errorHandler = require('./middlewares/errorHandler');
+const notFound     = require('./middlewares/notFound');
 
 const app = express();
 

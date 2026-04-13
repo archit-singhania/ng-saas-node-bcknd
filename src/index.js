@@ -12,8 +12,6 @@ app.use(express.json());
 
 app.use('/api/calls', callsRouter);
 
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok', schema: process.env.DB_SCHEMA }));
 
-app.listen(PORT, () => {
-  console.log(`[Server] Running on http://localhost:${PORT}`);
-});
+app.listen(PORT);

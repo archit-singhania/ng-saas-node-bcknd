@@ -1,8 +1,14 @@
-const express = require('express');
-const router  = express.Router();
-const pool    = require('../db/pool');
+require('dotenv').config();
+const router = require('express').Router();
+const pool   = require('../db/pool');
 
-const SCHEMA = process.env.DB_SCHEMA || 'llm_ai_call_agent';
+function schema() {
+  return process.env.DB_SCHEMA || 'llm_ai_call_agent';
+}
+
+function tbl() {
+  return `"${schema()}"."call_logs"`;
+}
 
 function fmtDuration(seconds) {
   if (!seconds || seconds <= 0) return '0m 0s';
@@ -11,26 +17,35 @@ function fmtDuration(seconds) {
   return `${m}m ${s}s`;
 }
 
+router.get('/columns', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_schema = $1 AND table_name = 'call_logs'
+      ORDER BY ordinal_position
+    `, [schema()]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/summary', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        COUNT(*)::int                        AS total_calls,
-        ROUND(AVG(duration_sec))::int        AS avg_duration_sec
-      FROM ${SCHEMA}.call_logs
+        COUNT(*)::int                          AS total_calls,
+        COALESCE(ROUND(SUM(duration_seconds)::numeric / NULLIF(COUNT(*), 0)), 0)::int AS avg_duration_sec
+      FROM ${tbl()}
     `);
-
     const row = result.rows[0];
-    const totalCalls     = row.total_calls     || 0;
-    const avgSec         = row.avg_duration_sec || 0;
-
     res.json({
-      totalCalls,
-      avgDuration: fmtDuration(avgSec),
+      totalCalls:  row.total_calls      || 0,
+      avgDuration: fmtDuration(row.avg_duration_sec || 0),
     });
   } catch (err) {
-    console.error('[/api/calls/summary]', err.message);
-    res.status(500).json({ error: 'Database error', detail: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -39,36 +54,35 @@ router.get('/recent', async (req, res) => {
     const result = await pool.query(`
       SELECT
         id,
-        phone_no,
+        phone_number,
         caller_name,
-        duration_sec,
+        duration_seconds,
         call_date,
         created_at
-      FROM ${SCHEMA}.call_logs
+      FROM ${tbl()}
       ORDER BY created_at DESC
       LIMIT 10
     `);
-
     const rows = result.rows.map(r => ({
-      id:         r.id,
-      phone:      r.phone_no     || 'Unknown',
-      callerName: r.caller_name  || '—',
-      duration:   fmtDuration(r.duration_sec),
-      date:       r.created_at
-        ? new Date(r.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
-        : r.call_date,
+      id:          r.id,
+      phone:       r.phone_number    || 'Unknown',
+      callerName:  r.caller_name     || '—',
+      duration:    fmtDuration(r.duration_seconds),
+      date:        r.call_date
+        ? new Date(r.call_date).toLocaleDateString('en-IN')
+        : r.created_at
+          ? new Date(r.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+          : '—',
     }));
-
     res.json(rows);
   } catch (err) {
-    console.error('[/api/calls/recent]', err.message);
-    res.status(500).json({ error: 'Database error', detail: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
 router.get('/', async (req, res) => {
-  const page  = Math.max(1, parseInt(req.query.page  || '1',  10));
-  const limit = Math.max(1, parseInt(req.query.limit || '15', 10));
+  const page   = Math.max(1, parseInt(req.query.page  || '1',  10));
+  const limit  = Math.max(1, parseInt(req.query.limit || '15', 10));
   const offset = (page - 1) * limit;
 
   try {
@@ -76,42 +90,37 @@ router.get('/', async (req, res) => {
       pool.query(`
         SELECT
           id,
-          phone_no,
+          phone_number,
           caller_name,
-          duration_sec,
+          duration_seconds,
           call_date,
           created_at,
           transcript,
           recording_url
-        FROM ${SCHEMA}.call_logs
+        FROM ${tbl()}
         ORDER BY created_at DESC
         LIMIT $1 OFFSET $2
       `, [limit, offset]),
-
-      pool.query(`SELECT COUNT(*)::int AS total FROM ${SCHEMA}.call_logs`)
+      pool.query(`SELECT COUNT(*)::int AS total FROM ${tbl()}`),
     ]);
 
     const data = dataResult.rows.map(r => ({
       id:           r.id,
-      phone:        r.phone_no     || 'Unknown',
-      callerName:   r.caller_name  || '—',
-      duration:     fmtDuration(r.duration_sec),
-      date:         r.created_at
-        ? new Date(r.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
-        : r.call_date,
+      phone:        r.phone_number    || 'Unknown',
+      callerName:   r.caller_name     || '—',
+      duration:     fmtDuration(r.duration_seconds),
+      date:         r.call_date
+        ? new Date(r.call_date).toLocaleDateString('en-IN')
+        : r.created_at
+          ? new Date(r.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+          : '—',
       transcript:   r.transcript    || null,
       recordingUrl: r.recording_url || null,
     }));
 
-    res.json({
-      data,
-      total: countResult.rows[0].total,
-      page,
-      limit,
-    });
+    res.json({ data, total: countResult.rows[0].total, page, limit });
   } catch (err) {
-    console.error('[/api/calls]', err.message);
-    res.status(500).json({ error: 'Database error', detail: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
